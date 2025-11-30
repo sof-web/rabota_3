@@ -1,0 +1,93 @@
+class NFAState:
+    def __init__(self, is_accept=False):
+        self.transitions = {}
+        self.is_accept = is_accept
+        self.epsilon_transitions = []
+
+    def add_transition(self, symbol, state):
+        if symbol not in self.transitions:
+            self.transitions[symbol] = []
+        self.transitions[symbol].append(state)
+
+    def add_epsilon(self, state):
+        self.epsilon_transitions.append(state)
+
+def thompson_from_symbol(symbol):
+    start = NFAState()
+    accept = NFAState(is_accept=True)
+    start.add_transition(symbol, accept)
+    return start, accept
+
+def thompson_concat(nfa1, nfa2):
+    nfa1[1].is_accept = False
+    nfa1[1].add_epsilon(nfa2[0])
+    return nfa1[0], nfa2[1]
+
+def thompson_union(nfa1, nfa2):
+    start = NFAState()
+    accept = NFAState(is_accept=True)
+    start.add_epsilon(nfa1[0])
+    start.add_epsilon(nfa2[0])
+    nfa1[1].is_accept = False
+    nfa2[1].is_accept = False
+    nfa1[1].add_epsilon(accept)
+    nfa2[1].add_epsilon(accept)
+    return start, accept
+
+def thompson_star(nfa):
+    start = NFAState()
+    accept = NFAState(is_accept=True)
+    start.add_epsilon(nfa[0])
+    start.add_epsilon(accept)
+    nfa[1].is_accept = False
+    nfa[1].add_epsilon(nfa[0])
+    nfa[1].add_epsilon(accept)
+    return start, accept
+
+def build_nfa(regex):
+    stack = []
+    for char in regex:
+        if char.isalnum():  # символ
+            stack.append(thompson_from_symbol(char))
+        elif char == '|':
+            nfa2 = stack.pop()
+            nfa1 = stack.pop()
+            stack.append(thompson_union(nfa1, nfa2))
+        elif char == '.':
+            nfa2 = stack.pop()
+            nfa1 = stack.pop()
+            stack.append(thompson_concat(nfa1, nfa2))
+        elif char == '*':
+            nfa = stack.pop()
+            stack.append(thompson_star(nfa))
+    return stack[0] if stack else (NFAState(), NFAState())
+
+def epsilon_closure(states):
+    closure = set(states)
+    stack = list(states)
+    while stack:
+        s = stack.pop()
+        for eps in s.epsilon_transitions:
+            if eps not in closure:
+                closure.add(eps)
+                stack.append(eps)
+    return closure
+
+def nfa_match(nfa_start, string):
+    current = epsilon_closure({nfa_start})
+    for char in string:
+        next_states = set()
+        for state in current:
+            if char in state.transitions:
+                next_states.update(state.transitions[char])
+        current = epsilon_closure(next_states)
+        if not current:
+            return False
+    return any(s.is_accept for s in current)
+
+regex = input("Введите регулярное выражение (только символы a-z и .|*): ")
+test_string = input("Введите строку для проверки: ")
+
+start, _ = build_nfa(regex)
+result = nfa_match(start, test_string)
+print("Принято:" if result else "Отклонено:", test_string)
