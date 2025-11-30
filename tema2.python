@@ -1,0 +1,41 @@
+import heapq
+import os
+import tempfile
+
+def external_merge_sort(input_data, chunk_size=3):
+    temp_files = []
+    for i in range(0, len(input_data), chunk_size):
+        chunk = input_data[i:i + chunk_size]
+        chunk.sort()
+        tf = tempfile.NamedTemporaryFile(mode='w+', delete=False)
+        for num in chunk:
+            tf.write(f"{num}\n")
+        tf.close()
+        temp_files.append(tf.name)
+
+    files = [open(f, 'r') for f in temp_files]
+    heap = []
+    for i, f in enumerate(files):
+        line = f.readline()
+        if line:
+            heapq.heappush(heap, (int(line.strip()), i))
+
+    result = []
+    while heap:
+        val, idx = heapq.heappop(heap)
+        result.append(val)
+        next_line = files[idx].readline()
+        if next_line:
+            heapq.heappush(heap, (int(next_line.strip()), idx))
+
+    for f in files:
+        f.close()
+    for f_name in temp_files:
+        os.unlink(f_name)
+
+    return result
+
+data_str = input("Введите числа через пробел (больше, чем поместится в память): ")
+data = list(map(int, data_str.split()))
+sorted_data = external_merge_sort(data, chunk_size=3)
+print("Отсортировано:", sorted_data)
