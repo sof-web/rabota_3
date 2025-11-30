@@ -1,0 +1,33 @@
+import math
+
+def cross(o, a, b):
+    """Векторное произведение OA × OB — определяет ориентацию поворота."""
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+def graham_scan(points):
+    if len(points) <= 1:
+        return points
+
+    start = min(points, key=lambda p: (p[1], p[0]))
+    points_sorted = sorted(points, key=lambda p: (
+        math.atan2(p[1] - start[1], p[0] - start[0]),
+        (p[0] - start[0])**2 + (p[1] - start[1])**2
+    ))
+
+    hull = []
+    for p in points_sorted:
+        while len(hull) >= 2 and cross(hull[-2], hull[-1], p) <= 0:
+            hull.pop()
+        hull.append(p)
+    return hull
+
+n = int(input("Введите количество точек: "))
+points = []
+for i in range(n):
+    x, y = map(int, input(f"Точка {i+1} (x y): ").split())
+    points.append((x, y))
+
+hull = graham_scan(points)
+print("\nТочки выпуклой оболочки:")
+for p in hull:
+    print(p)
